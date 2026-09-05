@@ -1,218 +1,587 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[codz]
-*$py.class
+import os
+import platform
+import socket
+import subprocess
+import json
+from datetime import datetime
 
-# C extensions
-*.so
+import psutil
 
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+from tkinter import Tk
+from tkinter.filedialog import asksaveasfilename
 
-# PyInstaller
-#   Usually these files are written by a python script from a template
-#   before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
+from reportlab.pdfgen import canvas
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
 
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py.cover
-.hypothesis/
-.pytest_cache/
-cover/
+# =========================================================
+# TÜRKÇE KARAKTER DESTEKLİ FONT
+# =========================================================
 
-# Translations
-*.mo
-*.pot
+FONT_PATHS = [
+    r"C:\Windows\Fonts\arial.ttf",
+    r"C:\Windows\Fonts\segoeui.ttf",
+    r"C:\Windows\Fonts\DejaVuSans.ttf"
+]
 
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
+FONT_PATH = None
 
-# Flask stuff:
-instance/
-.webassets-cache
+for path in FONT_PATHS:
+    if os.path.exists(path):
+        FONT_PATH = path
+        break
 
-# Scrapy stuff:
-.scrapy
+if FONT_PATH:
+    pdfmetrics.registerFont(
+        TTFont("TurkceFont", FONT_PATH)
+    )
 
-# Sphinx documentation
-docs/_build/
 
-# PyBuilder
-.pybuilder/
-target/
+# =========================================================
+# İŞLETİM SİSTEMİ
+# =========================================================
 
-# Jupyter Notebook
-.ipynb_checkpoints
+def get_os():
 
-# IPython
-profile_default/
-ipython_config.py
+    system = platform.system()
 
-# pyenv
-#   For a library or package, you might want to ignore these files since the code is
-#   intended to run in multiple environments; otherwise, check them in:
-# .python-version
+    if system == "Windows":
 
-# pipenv
-#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
-#   However, in case of collaboration, if having platform-specific dependencies or dependencies
-#   having no cross-platform support, pipenv may install dependencies that don't work, or not
-#   install all needed dependencies.
-# Pipfile.lock
+        try:
+            build = int(
+                platform.version().split(".")[-1]
+            )
 
-# UV
-#   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-# uv.lock
+            if build >= 22000:
+                return "Windows 11"
 
-# poetry
-#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
-# poetry.lock
-# poetry.toml
+            return "Windows 10"
 
-# pdm
-#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
-#   pdm recommends including project-wide configuration in pdm.toml, but excluding .pdm-python.
-#   https://pdm-project.org/en/latest/usage/project/#working-with-version-control
-# pdm.lock
-# pdm.toml
-.pdm-python
-.pdm-build/
+        except:
+            return "Windows"
 
-# pixi
-#   Similar to Pipfile.lock, it is generally recommended to include pixi.lock in version control.
-# pixi.lock
-#   Pixi creates a virtual environment in the .pixi directory, just like venv module creates one
-#   in the .venv directory. It is recommended not to include this directory in version control.
-.pixi
+    elif system == "Darwin":
+        return "macOS"
 
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
-__pypackages__/
+    elif system == "Linux":
+        return "Linux"
 
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
+    return system
 
-# Redis
-*.rdb
-*.aof
-*.pid
 
-# RabbitMQ
-mnesia/
-rabbitmq/
-rabbitmq-data/
+# =========================================================
+# GPU BİLGİLERİ
+# =========================================================
 
-# ActiveMQ
-activemq-data/
+def get_gpu():
 
-# SageMath parsed files
-*.sage.py
+    gpus = []
 
-# Environments
-.env
-.envrc
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
+    try:
 
-# Spyder project settings
-.spyderproject
-.spyproject
+        command = [
+            "powershell",
+            "-Command",
+            """
+            Get-CimInstance Win32_VideoController |
+            Select-Object Name,AdapterRAM,DriverVersion,
+            CurrentRefreshRate,CurrentHorizontalResolution,
+            CurrentVerticalResolution |
+            ConvertTo-Json
+            """
+        ]
 
-# Rope project settings
-.ropeproject
+        result = subprocess.check_output(
+            command,
+            text=True,
+            encoding="utf-8",
+            errors="ignore"
+        )
 
-# mkdocs documentation
-/site
+        data = json.loads(result)
 
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
+        if isinstance(data, dict):
+            data = [data]
 
-# Pyre type checker
-.pyre/
+        for gpu in data:
 
-# pytype static type analyzer
-.pytype/
+            name = gpu.get(
+                "Name",
+                "Bilinmiyor"
+            )
 
-# Cython debug symbols
-cython_debug/
+            adapter_ram = gpu.get(
+                "AdapterRAM"
+            )
 
-# PyCharm
-#   JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#   be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#   and can be added to the global gitignore or merged into this file.  For a more nuclear
-#   option (not recommended) you can uncomment the following to ignore the entire idea folder.
-# .idea/
+            if adapter_ram:
+                vram = (
+                    adapter_ram /
+                    (1024 ** 3)
+                )
 
-# Abstra
-#   Abstra is an AI-powered process automation framework.
-#   Ignore directories containing user credentials, local state, and settings.
-#   Learn more at https://abstra.io/docs
-.abstra/
+                vram_text = f"{vram:.2f} GB"
 
-# Visual Studio Code
-#   Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
-#   that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
-#   and can be added to the global gitignore or merged into this file. However, if you prefer, 
-#   you could uncomment the following to ignore the entire vscode folder
-# .vscode/
-# Temporary file for partial code execution
-tempCodeRunnerFile.py
+            else:
+                vram_text = "Bilinmiyor"
 
-# Ruff stuff:
-.ruff_cache/
+            driver = gpu.get(
+                "DriverVersion",
+                "Bilinmiyor"
+            )
 
-# PyPI configuration file
-.pypirc
+            refresh = gpu.get(
+                "CurrentRefreshRate",
+                "Bilinmiyor"
+            )
 
-# Marimo
-marimo/_static/
-marimo/_lsp/
-__marimo__/
+            width = gpu.get(
+                "CurrentHorizontalResolution",
+                "?"
+            )
 
-# Streamlit
-.streamlit/secrets.toml
+            height = gpu.get(
+                "CurrentVerticalResolution",
+                "?"
+            )
+
+            gpus.append({
+                "Ad": name,
+                "VRAM": vram_text,
+                "Sürücü": driver,
+                "Yenileme": f"{refresh} Hz",
+                "Çözünürlük": f"{width} x {height}"
+            })
+
+    except Exception:
+
+        gpus.append({
+            "Ad": "GPU bilgisi alınamadı",
+            "VRAM": "-",
+            "Sürücü": "-",
+            "Yenileme": "-",
+            "Çözünürlük": "-"
+        })
+
+    return gpus
+
+
+# =========================================================
+# WI-FI
+# =========================================================
+
+def get_wifi():
+
+    try:
+
+        result = subprocess.check_output(
+            ["netsh", "wlan", "show", "interfaces"],
+            text=True,
+            encoding="utf-8",
+            errors="ignore"
+        )
+
+        for line in result.splitlines():
+
+            line = line.strip()
+
+            if line.startswith("SSID") and "BSSID" not in line:
+
+                return line.split(":", 1)[1].strip()
+
+        return "Wi-Fi bağlı değil"
+
+    except:
+
+        return "Wi-Fi bilgisi alınamadı"
+
+
+# =========================================================
+# IP ADRESİ
+# =========================================================
+
+def get_ip():
+
+    try:
+
+        hostname = socket.gethostname()
+
+        return socket.gethostbyname(
+            hostname
+        )
+
+    except:
+
+        return "Bilinmiyor"
+
+
+# =========================================================
+# SİSTEM BİLGİLERİ
+# =========================================================
+
+def get_system_info():
+
+    ram = psutil.virtual_memory()
+
+    disk = psutil.disk_usage(
+        os.path.abspath(os.sep)
+    )
+
+    info = {
+
+        "Bilgisayar Adı":
+            platform.node(),
+
+        "İşletim Sistemi":
+            get_os(),
+
+        "İşletim Sistemi Sürümü":
+            platform.version(),
+
+        "İşlemci":
+            platform.processor(),
+
+        "Fiziksel Çekirdek":
+            str(
+                psutil.cpu_count(
+                    logical=False
+                )
+            ),
+
+        "Mantıksal Çekirdek":
+            str(
+                psutil.cpu_count()
+            ),
+
+        "CPU Kullanımı":
+            f"%{psutil.cpu_percent(interval=1)}",
+
+        "RAM Toplam":
+            f"{ram.total / (1024 ** 3):.2f} GB",
+
+        "RAM Kullanılan":
+            f"{ram.used / (1024 ** 3):.2f} GB",
+
+        "RAM Boş":
+            f"{ram.available / (1024 ** 3):.2f} GB",
+
+        "RAM Kullanımı":
+            f"%{ram.percent}",
+
+        "Disk Toplam":
+            f"{disk.total / (1024 ** 3):.2f} GB",
+
+        "Disk Kullanılan":
+            f"{disk.used / (1024 ** 3):.2f} GB",
+
+        "Disk Boş":
+            f"{disk.free / (1024 ** 3):.2f} GB",
+
+        "Disk Kullanımı":
+            f"%{disk.percent}",
+
+        "Wi-Fi":
+            get_wifi(),
+
+        "IP Adresi":
+            get_ip()
+    }
+
+    return info
+
+
+# =========================================================
+# TERMİNAL RAPORU
+# =========================================================
+
+def print_report(info, gpus):
+
+    print()
+    print("=" * 60)
+    print("                     COMREPORT")
+    print("=" * 60)
+
+    for key, value in info.items():
+
+        print(
+            f"{key:<28}: {value}"
+        )
+
+    print()
+    print("GPU BİLGİLERİ")
+    print("-" * 60)
+
+    for gpu in gpus:
+
+        print(
+            f"Ekran Kartı : {gpu['Ad']}"
+        )
+
+        print(
+            f"VRAM        : {gpu['VRAM']}"
+        )
+
+        print(
+            f"Sürücü      : {gpu['Sürücü']}"
+        )
+
+        print(
+            f"Yenileme    : {gpu['Yenileme']}"
+        )
+
+        print(
+            f"Çözünürlük  : {gpu['Çözünürlük']}"
+        )
+
+        print("-" * 60)
+
+
+# =========================================================
+# PDF OLUŞTURMA
+# =========================================================
+
+def save_pdf(info, gpus):
+
+    root = Tk()
+    root.withdraw()
+
+    file_path = asksaveasfilename(
+        title="PC Raporunu Kaydet",
+        defaultextension=".pdf",
+        filetypes=[
+            ("PDF Dosyası", "*.pdf")
+        ]
+    )
+
+    root.destroy()
+
+    if not file_path:
+
+        print()
+        print("PDF kaydetme iptal edildi.")
+
+        return
+
+    pdf = canvas.Canvas(
+        file_path
+    )
+
+    pdf.setTitle(
+        "ComReport"
+    )
+
+    # Font seç
+    if FONT_PATH:
+
+        normal_font = "TurkceFont"
+        bold_font = "TurkceFont"
+
+    else:
+
+        normal_font = "Helvetica"
+        bold_font = "Helvetica-Bold"
+
+    # -----------------------------------------------------
+    # BAŞLIK
+    # -----------------------------------------------------
+
+    y = 800
+
+    pdf.setFont(
+        bold_font,
+        22
+    )
+
+    pdf.drawString(
+        50,
+        y,
+        "COMREPORT"
+    )
+
+    y -= 35
+
+    pdf.setFont(
+        normal_font,
+        10
+    )
+
+    pdf.drawString(
+        50,
+        y,
+        "Bilgisayar Sistem Raporu"
+    )
+
+    y -= 20
+
+    pdf.drawString(
+        50,
+        y,
+        "Oluşturulma: " +
+        datetime.now().strftime(
+            "%d.%m.%Y %H:%M"
+        )
+    )
+
+    y -= 40
+
+    # -----------------------------------------------------
+    # SİSTEM BİLGİLERİ
+    # -----------------------------------------------------
+
+    pdf.setFont(
+        bold_font,
+        14
+    )
+
+    pdf.drawString(
+        50,
+        y,
+        "SİSTEM BİLGİLERİ"
+    )
+
+    y -= 25
+
+    pdf.setFont(
+        normal_font,
+        10
+    )
+
+    for key, value in info.items():
+
+        pdf.drawString(
+            50,
+            y,
+            f"{key}: {value}"
+        )
+
+        y -= 20
+
+        if y < 60:
+
+            pdf.showPage()
+
+            y = 800
+
+            pdf.setFont(
+                normal_font,
+                10
+            )
+
+    # -----------------------------------------------------
+    # GPU
+    # -----------------------------------------------------
+
+    y -= 15
+
+    pdf.setFont(
+        bold_font,
+        14
+    )
+
+    pdf.drawString(
+        50,
+        y,
+        "GPU BİLGİLERİ"
+    )
+
+    y -= 25
+
+    pdf.setFont(
+        normal_font,
+        10
+    )
+
+    for gpu in gpus:
+
+        gpu_lines = [
+
+            f"Ekran Kartı: {gpu['Ad']}",
+
+            f"VRAM: {gpu['VRAM']}",
+
+            f"Sürücü: {gpu['Sürücü']}",
+
+            f"Yenileme: {gpu['Yenileme']}",
+
+            f"Çözünürlük: {gpu['Çözünürlük']}"
+        ]
+
+        for line in gpu_lines:
+
+            pdf.drawString(
+                50,
+                y,
+                line
+            )
+
+            y -= 20
+
+        y -= 10
+
+    # -----------------------------------------------------
+    # PDF'Yİ KAYDET
+    # -----------------------------------------------------
+
+    pdf.save()
+
+    print()
+    print("PDF başarıyla oluşturuldu!")
+    print()
+    print("Dosya:")
+    print(file_path)
+
+
+# =========================================================
+# ANA PROGRAM
+# =========================================================
+
+def main():
+
+    print()
+    print("ComReport başlatılıyor...")
+    print()
+
+    info = get_system_info()
+
+    gpus = get_gpu()
+
+    print_report(
+        info,
+        gpus
+    )
+
+    print()
+    print("[1] PDF olarak kaydet")
+    print("[2] Çıkış")
+
+    choice = input(
+        "\nSeçiminiz: "
+    )
+
+    if choice == "1":
+
+        save_pdf(
+            info,
+            gpus
+        )
+
+    elif choice == "2":
+
+        print(
+            "\nProgram kapatılıyor..."
+        )
+
+    else:
+
+        print(
+            "\nGeçersiz seçim."
+        )
+
+
+# =========================================================
+# BAŞLAT
+# =========================================================
+
+if __name__ == "__main__":
+    main()
